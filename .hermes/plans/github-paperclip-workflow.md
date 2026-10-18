@@ -44,3 +44,10 @@
 - 已通过 Paperclip 真实 archive 流程清理 FIV-21、FIV-22、FIV-23 的终态 smoke worktree 和分支；FIV-16 仅归档共享会话记录。
 - FIV-18/19/20 的未跟踪 proof 文件、FIV-24 的 blocked Claude worktree，以及 Paperclip 阻止破坏性关闭的 FIV-26/28 均保留，避免删除唯一验收证据或绕过状态机。
 - 正式仓库、`main`、GitHub 私有仓库和 Paperclip 项目配置没有因历史 smoke 清理而改变；当前正式流程仍不允许 Agent 直接写入 `main`。
+
+## 2026-10-18 Codex 只读验收边界
+
+- FIV-33 的一次性 Codex Agent 显式使用 `--sandbox read-only`，在 `C:/pcwt/FIV-33-read-only-codex-explicit-read-only-argv-smoke` 隔离 worktree 中返回 `CODEX_READ_ONLY_SMOKE_OK`；worktree 无改动，任务结束后已由 Paperclip 归档并清理主题分支。
+- Paperclip/Codex 日志显示当前运行环境仍开放 runner network；本次没有调用 shell、MCP、插件或网络工具，所以只证明只读参数链和 worktree 隔离，不证明网络隔离或 Windows OS sandbox。
+- FIV-33 期间发现当前 Codex CLI 忽略 `model_reasoning_effort`、`plugins` 两项配置；后续不得把被 CLI 忽略的配置当作权限控制。不要修改全局 Codex Home 以规避该提示。
+- Codex 正式项目写入仍关闭。继续执行：隔离 worktree → 人工查看 diff/运行测试 → 人工 approval → 人工 Squash Merge；不允许 Agent 直接写入 `main`。

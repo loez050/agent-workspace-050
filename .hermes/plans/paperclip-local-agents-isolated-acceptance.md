@@ -77,3 +77,19 @@
 - FIV-24 保留：Issue 为 `blocked` 且仍有真实 Claude smoke worktree；Paperclip close-readiness 阻止破坏性关闭。
 - FIV-26、FIV-28 保留：Issue 为 `blocked`，Paperclip 将其判定为非终态并拒绝破坏性关闭；当前物理目录已不存在，正式 Git worktree/分支列表没有残留。
 - 当前正式仓库和 Paperclip managed checkout 均干净，`live-runs=0`，历史 smoke 清理没有触碰 `main` 或正式业务文件。
+
+## 2026-10-18 Codex 显式只读 argv smoke
+
+- FIV-33 使用一次性 `codex_local` Agent `ce049812-34b0-4d8f-8147-ab03132de969` 和隔离 Issue `FIV-33`；验收结束后已终止该 Agent，未用于正式项目。
+- 适配器配置显式携带 `--sandbox read-only`，并关闭测试所需的托管 MCP/插件；`dangerouslyBypassApprovalsAndSandbox=false` 保持不变。适配器源码与运行记录均确认没有使用 `dangerously*` 绕过参数。
+- 首次 assignment run `6a95398b-50e6-4ca0-960a-a5fc5282fc76` 成功返回 `CODEX_READ_ONLY_SMOKE_OK`；Paperclip 事件记录的 cwd 为 `C:\\pcwt\\FIV-33-read-only-codex-explicit-read-only-argv-smoke`，不是正式 checkout。
+- 该 run 的工作区从 `origin/main` 创建，初始 HEAD 为 `369dd6c`；结束时 `git status --short` 为空、ahead/behind 均为 0、没有未跟踪文件，未发现文件修改。
+- Codex 输出提示 `model_reasoning_effort` 与 `plugins` 两项配置被当前 CLI 忽略；这不影响本次只读字符串 smoke，但说明不能把这些配置项当作已生效的权限证据。
+- Paperclip 运行环境仍报告 `PAPERCLIP_RUNNER_NETWORK_ACCESS=enabled`；本次任务没有调用 shell、MCP、插件或网络工具，因此不证明网络隔离，也不证明 Windows OS sandbox。只证明显式只读参数链和隔离 worktree 启动链可用。
+- 运行期间误触发一次 disposition-repair automation；已取消后续 run，读回 `live-runs=[]`、recovery 为空、Issue=`done`、Agent=`terminated`，没有留下活动进程。
+- FIV-33 execution workspace 已按 Paperclip close-readiness 归档；实际 worktree 和主题分支均已删除，正式仓库、managed checkout 和 `main` 未改动。
+
+## Codex 只读结论
+
+- Codex 的显式只读参数链通过一次性隔离 smoke；旧 FIV-22 的 `workspace-write` 记录仍不能作为只读证据。
+- 这次结果不放行 Codex 正式项目写入：Windows runtime sandbox、网络隔离、完整权限边界和人工 approval/merge 流程仍未完成业务级验收。
