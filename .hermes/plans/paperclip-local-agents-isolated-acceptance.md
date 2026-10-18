@@ -12,21 +12,19 @@
 ### Codex Reviewer
 - FIV-22 run `ed22b564-82e1-4b4b-912b-44c33094fab9` 曾成功留言，但启动参数真实包含 `sandbox_mode="workspace-write"` 与 `sandbox_workspace_write.network_access=true`；此 run 不证明只读边界，也不得用于正式项目写权限验收。
 - `adapter-codex-local/dist/server/codex-args.js:31-60` 表明 `dangerouslyBypassApprovalsAndSandbox=false` 并不会自动给 read-only；未显式指定 sandbox 时适配器仍生成 `workspace-write`。
-- FIV-22 实际 `CODEX_HOME` 是 Paperclip 公司托管目录：`C:\Users\loez\.paperclip\instances\default\companies\0a8707ff-5772-411c-928e-a6c5154db384\codex-home`。MCP 需检查此目录下 `config.toml`，并核对 run 时实际 `CODEX_HOME`。
 - Codex run 当时尝试连接 `http://127.0.0.1:18060/mcp`，但当前托管 `config.toml` 的 `xiaohongshu` 已为 `enabled=false`。历史错误来源还未查清，需核对对应运行时配置快照，不能假定 disabled 已约束运行时。
-- Paperclip 本地 `filesystemScope` 对 Windows 不可用：`adapter-utils/dist/local-process-sandbox.js:282-289` 在非 Linux 抛出 “Local process filesystem and network scopes are currently supported only on Linux.” 本机实测自检返回相同错误。
-- Codex 托管目录曾有缺失 instructions 路径错误；本轮确认当前 `config.toml` 不再含 `model_instructions_file`，但仍未证明新的 issue-assigned run 已无其他配置错误。
+- Paperclip 本地 `filesystemScope` 对 Windows 不可用：实测返回 `Local process filesystem and network scopes are currently supported only on Linux.`
 
-## 2026-10-18 Paperclip issue 生命周期源码补充
+## 2026-10-18 Windows 短路径隔离 smoke 结果
 
-- 第三方只读审查子任务也超时；它在 Windows 下误选了 Desktop 根目录做 broad search，随后搜索/网络请求反复阻塞。未接受其超时作为独立结论。只采纳本机已验证安装源码。
-- 本机 `@paperclipai/shared/dist/validators/issue.js:570-631, 664-673`：创建 issue 至少要有非空 `title` 或 `description`；关联项目和 assignee 可以显式指定。创建时省略 status，若有 agent/user assignee 则默认 `todo`，否则 `backlog`（537-568）。
-- 本机 `@paperclipai/server/dist/routes/issues.js:8432-8445`：除 onboarding 首任务外，普通 issue create 在响应前会排队 `reason=issue_assigned, mutation=create` 的 assignment wake。不要再额外 POST heartbeat/wakeup；以第一次 assignment run 作为验收对象。
-- 本机 `@paperclipai/server/dist/services/run-liveness.js:267-290`：issue 已 `done/cancelled` 时 liveness=`completed`；run succeeded 但 issue 仍 `in_progress` 时，有 concrete evidence 会 `advanced`，没有 evidence 但有 useful output 则 `needs_followup`。因此“模型说完成”或单条评论不是最终 disposition。
-- 本机 `@paperclipai/server/dist/services/recovery/successful-run-handoff.js:259-317, 319-390`：有效处置需明确推进到 `done/cancelled`、有负责路径的 `in_review`、有 owner/action 的 `blocked`，或明确 delegation/continuation；评论、文档或总结只能作支持证据。补救 wake 最多一次并有重复/恢复保护，不能通过反复唤醒规避。
-- Claude adapter 确实把 Paperclip run token 和 API URL 注入 CLI 子进程（`adapter-claude-local/dist/server/execute.js:87-89, 159-174`）；但本次未核实该 direct CLI prompt 是否自动包含可用的 API 写入说明。可安全验证时，任务应明确允许仅使用当前 run 注入的环境变量访问本机 Paperclip API，使用隔离 issue、无工作区写入，执行一次可核验的合法状态更新，然后立即结束。
+- Paperclip 项目执行工作区的 `worktreeParentDir` 改为 `C:/pcwt`，原因是原路径叠加长分支名会触发 Windows Git：`fatal: '$GIT_DIR' too big`。
+- 修改已通过 Paperclip 项目 GET 读回确认；主仓库与 Paperclip 主 checkout 均未改动，仍为 `main...origin/main`。
+- FIV-29 的首次 assignment run `488c2c3a-6c21-48b1-b7f6-839a4e0a71b2` 成功返回精确字符串 `PAPERCLIP_ISOLATED_WORKSPACE_OK`，adapter 日志明确记录 `cwd=C:\pcwt`，实际命令为只读 wrapper，worktree 基于 `origin/main`，任务临时目录已清理。
+- 验收 worktree 初始干净，HEAD 等于 `origin/main`；结束后已删除该临时 worktree 和 `FIV-29-...` 主题分支，`C:/pcwt` 无残留目录。
+- 后续 recovery run `b0095eb3-f7c3-4e35-83fb-8f9443715d0e` 因旧 wrapper 未写回 issue disposition 被人工取消；这不否定 worktree 隔离结果，但说明该 wrapper 只能证明启动/隔离，不能证明 Paperclip issue 生命周期闭环。
+- 本次仅证明 Windows 短路径下的 Antigravity 标准 process smoke 能创建并运行隔离 worktree；不证明 Windows sandbox scopes 可用，不放行 Claude/Codex 正式项目写入，也不证明任何 Agent 可直接写 `main`。
 
-### 建议的最小复验顺序
+## 建议的最小复验顺序
 1. 先 GET 核实测试 Agent 可 invokable、无 live run/recovery；选专用空白 Git 项目/隔离 worktree。
 2. 新建唯一测试 issue，显式指定 `title`、`description`、`projectId`、`assigneeAgentId`、`status=todo` 和 `executionWorkspaceId`；创建动作会触发 assignment wake。不得并发重复 wake。
 3. Prompt 明确允许完成一次 Paperclip issue disposition；禁止修改 worktree；清楚指定完成后 `done`（或预期合法处置）并报告。不能同时禁止全部工具又要求 API 写回。
