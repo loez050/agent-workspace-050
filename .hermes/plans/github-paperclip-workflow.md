@@ -38,3 +38,9 @@
 - Windows 子进程回收通过本地 Job Object 守卫补足：Paperclip 取消 wrapper 后，守卫绑定的子进程随 Job Object 一起退出。该证据来自 FIV-32 专用无业务 smoke，不代表 Paperclip 提供 OS 级 sandbox。
 - FIV-32 结束后测试 Agent 已终止，Issue 保留为 `blocked` 审计记录；正式 `main`、GitHub 私有仓库、Paperclip 项目配置和 Claude/Codex 正式 Agent 未被放开。
 - 当前仍采用：隔离 worktree → 人工查看 diff/测试 → 人工 approval → 人工 Squash Merge；GitHub Free 私有仓库没有服务器端 branch protection，不能把 Paperclip 状态门控误称为 GitHub 强制保护。
+
+## 2026-10-18 历史 smoke 清理边界
+
+- 已通过 Paperclip 真实 archive 流程清理 FIV-21、FIV-22、FIV-23 的终态 smoke worktree 和分支；FIV-16 仅归档共享会话记录。
+- FIV-18/19/20 的未跟踪 proof 文件、FIV-24 的 blocked Claude worktree，以及 Paperclip 阻止破坏性关闭的 FIV-26/28 均保留，避免删除唯一验收证据或绕过状态机。
+- 正式仓库、`main`、GitHub 私有仓库和 Paperclip 项目配置没有因历史 smoke 清理而改变；当前正式流程仍不允许 Agent 直接写入 `main`。

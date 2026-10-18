@@ -67,3 +67,13 @@
 - Antigravity wrapper 的 disposition 写回和 Windows wrapper 子进程回收均有真实 smoke 证据；这不等于正式项目写入已获准。
 - Claude/Codex 正式项目写入继续关闭。Codex 仍需显式只读 argv 验收，Claude 仍需可验证的权限边界验收。
 - Paperclip API 短暂停止后已恢复；最终读回为 Agent `terminated`、FIV-32 `blocked`、无 live run、无 active recovery。后续重新测试必须新建一次性 Agent，不复用 terminated Agent。
+
+## 2026-10-18 历史 smoke workspace 清理
+
+- Paperclip managed checkout 已改用真实路径 `C:\Users\loez\.paperclip\instances\default\projects\0a8707ff-5772-411c-928e-a6c5154db384\270eca47-efc0-4a7a-8d1e-1a3d0e315cb8\agent-workspace-050`，并已快进同步到 `4eec70a`；此前误查的 `companies\\<company>` 目录不是 Git checkout。
+- FIV-21、FIV-22、FIV-23 的 Issue 均为终态 `done`、workspace readiness 为 `ready`、工作区干净且已合并；通过 Paperclip archive API 归档后，实际 worktree 和对应分支均已删除，并逐项读回确认。
+- FIV-16 是无物理目录的共享 workspace 会话，已按 `ready_with_warnings` 归档记录；没有删除共享基础设施。
+- FIV-18、FIV-19、FIV-20 保留：物理 worktree 仍有唯一未跟踪的 `proof.txt`、`proof-final.txt`、`clean-approval-proof.txt`，不得在未另存验收依据前删除。
+- FIV-24 保留：Issue 为 `blocked` 且仍有真实 Claude smoke worktree；Paperclip close-readiness 阻止破坏性关闭。
+- FIV-26、FIV-28 保留：Issue 为 `blocked`，Paperclip 将其判定为非终态并拒绝破坏性关闭；当前物理目录已不存在，正式 Git worktree/分支列表没有残留。
+- 当前正式仓库和 Paperclip managed checkout 均干净，`live-runs=0`，历史 smoke 清理没有触碰 `main` 或正式业务文件。
