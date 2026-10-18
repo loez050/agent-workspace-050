@@ -30,3 +30,4 @@
 - 一次性只读 smoke 已真实通过：worktree 从 `origin/main` 创建，Agent 在 `C:/pcwt` 启动，返回 `PAPERCLIP_ISOLATED_WORKSPACE_OK`；结束后主题分支、worktree 和运行临时目录均已清理。
 - 该 smoke 只证明 Paperclip 隔离工作区创建/启动链路，不替代 Windows runtime sandbox 验收，也不改变“Agent 不直接写 `main`、人工检查后合并”的规则。
 - 只读 wrapper 没有完成 issue disposition 写回；因此测试任务保留为 blocked 证据，不把 `run.succeeded` 误报为完整任务闭环。
+- 2026-10-18 复核时，Paperclip managed checkout 已用 `fetch` + `pull --ff-only` 同步到远程 `main` 的 `6e8583a`；正式任务开始前仍应确认基线已刷新，避免从旧的本地 `origin/main` 创建 worktree。

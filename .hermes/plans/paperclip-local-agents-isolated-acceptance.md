@@ -44,3 +44,10 @@
 - 若新 run 的实际 Codex argv 仍为 `workspace-write`、出现 `dangerously*` 绕过、cwd 不是临时 Git worktree，立刻停止验收、不在正式项目运行。
 - 若 Claude 再次只有模型文本、未能写入或完成明确 disposition，停止自动 retry，读 recovery/run 证据后由 board 安全收尾。
 - 每轮结束读回 issue、run、recovery、Agent、live-runs，并确认测试 worktree 无意外改动。
+
+## 2026-10-18 后续复核
+
+- FIV-27 的遗留 `stranded_assigned_issue` recovery 已通过 Paperclip recovery API 明确收尾为 `blocked`；读回确认 `activeRecoveryAction=null`，没有因此重试低信任 Agent，也没有放宽 `low_trust_requires_sandbox_environment` 保护。
+- Paperclip managed checkout 原先落后远程 `main` 一个提交；已执行 `fetch` + `pull --ff-only`，现在 HEAD 与 `origin/main` 同为 `6e8583a`，工作区干净，`git diff --check` 通过。
+- 已知 FIV-29 取消运行时遗留的精确进程 PID `32436`（`cua-driver.exe`）及子 PID `32144`（`conhost.exe`）仍存在；对这两个 PID 的精确 `taskkill /F` 返回“拒绝访问”。它们不属于当前 Paperclip live run，未改动仓库；后续需通过 Paperclip/Windows 重启或管理员可见清理路径解决，禁止按进程名批量误杀当前桌面 CUA。
+- 当前仍未开放 Claude/Codex 正式项目写入。下一阶段必须先修复或验证：只读 wrapper 的 disposition 写回、Windows process adapter 子进程回收、Codex 实际只读 argv，以及 Claude 的可验证权限边界。
