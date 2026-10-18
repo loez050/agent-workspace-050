@@ -31,3 +31,10 @@
 - 该 smoke 只证明 Paperclip 隔离工作区创建/启动链路，不替代 Windows runtime sandbox 验收，也不改变“Agent 不直接写 `main`、人工检查后合并”的规则。
 - 只读 wrapper 没有完成 issue disposition 写回；因此测试任务保留为 blocked 证据，不把 `run.succeeded` 误报为完整任务闭环。
 - 2026-10-18 复核时，Paperclip managed checkout 已用 `fetch` + `pull --ff-only` 同步到远程 `main` 的 `6e8583a`；正式任务开始前仍应确认基线已刷新，避免从旧的本地 `origin/main` 创建 worktree。
+
+## 2026-10-18 运行链修复后的边界
+
+- Antigravity 两个本地 wrapper 已使用 Paperclip run-scoped header 完成受限 issue 状态写回，并在写回后读回验证；写入 wrapper 只能把任务送入人工 `approval` 阶段，不能自动批准或合并。
+- Windows 子进程回收通过本地 Job Object 守卫补足：Paperclip 取消 wrapper 后，守卫绑定的子进程随 Job Object 一起退出。该证据来自 FIV-32 专用无业务 smoke，不代表 Paperclip 提供 OS 级 sandbox。
+- FIV-32 结束后测试 Agent 已终止，Issue 保留为 `blocked` 审计记录；正式 `main`、GitHub 私有仓库、Paperclip 项目配置和 Claude/Codex 正式 Agent 未被放开。
+- 当前仍采用：隔离 worktree → 人工查看 diff/测试 → 人工 approval → 人工 Squash Merge；GitHub Free 私有仓库没有服务器端 branch protection，不能把 Paperclip 状态门控误称为 GitHub 强制保护。

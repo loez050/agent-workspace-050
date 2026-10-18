@@ -51,3 +51,19 @@
 - Paperclip managed checkout 原先落后远程 `main` 一个提交；已执行 `fetch` + `pull --ff-only`，现在 HEAD 与 `origin/main` 同为 `6e8583a`，工作区干净，`git diff --check` 通过。
 - 已知 FIV-29 取消运行时遗留的精确进程 PID `32436`（`cua-driver.exe`）及子 PID `32144`（`conhost.exe`）仍存在；对这两个 PID 的精确 `taskkill /F` 返回“拒绝访问”。它们不属于当前 Paperclip live run，未改动仓库；后续需通过 Paperclip/Windows 重启或管理员可见清理路径解决，禁止按进程名批量误杀当前桌面 CUA。
 - 当前仍未开放 Claude/Codex 正式项目写入。下一阶段必须先修复或验证：只读 wrapper 的 disposition 写回、Windows process adapter 子进程回收、Codex 实际只读 argv，以及 Claude 的可验证权限边界。
+
+## 2026-10-18 wrapper 与 Windows 子进程回收修复
+
+- 只读 wrapper `C:\Users\loez\AppData\Local\Paperclip\agy-process-readonly.ps1` 已增加 run-scoped `X-Paperclip-Run-Id` 头，并在 PATCH 后 GET 验证 issue 终态、active run 和 recovery；写入审核 wrapper 同样增加该头，并验证 `in_review / pending / approval`。
+- 两个 wrapper 在启动 CLI 前调用本地 `paperclip-job-guard.ps1`。守卫使用 Windows Job Object 的 `KILL_ON_JOB_CLOSE`，创建/配置/绑定失败即拒绝启动，避免未验证的子进程链继续运行。
+- FIV-30 真实只读回归：issue 进入 `done`，run 成功，recovery 为空，Agent 回到 `idle`，并使用 `C:\pcwt` 隔离 worktree；结束后 worktree、主题分支和临时目录已清理。
+- FIV-31 无 Job Object 对照 smoke 复现失败：Paperclip 父进程退出但子 PowerShell 进程仍存活；该测试的精确 PID 已清理，issue 保留为 `blocked` 证据。
+- FIV-32 真实 Paperclip 集成验收通过：Job Object 接入后取消 run `83ecb900-b604-42b9-9a05-0b19c25b14e2`，父 PID `21892` 与子 PID `13988` 均退出；run 为 `cancelled` 且 `executionCancellation.state=acknowledged`，`live-runs=0`、`activeRecoveryAction=null`。FIV-32 因人为取消而保留为 `blocked`，不把取消测试误报为业务成功。
+- FIV-32 一次性 Agent 已 `terminated`，四个 smoke 临时文件已删除；正式仓库没有 worktree/业务改动。复核时旧 PID `32436/32144` 已不存在。
+- Job Object 只解决 wrapper 进程树回收，不等于 Windows OS sandbox；仍不能替代 Claude/Codex 的实际 argv、cwd、网络和文件权限验收。
+
+## 当前安全结论（修复后）
+
+- Antigravity wrapper 的 disposition 写回和 Windows wrapper 子进程回收均有真实 smoke 证据；这不等于正式项目写入已获准。
+- Claude/Codex 正式项目写入继续关闭。Codex 仍需显式只读 argv 验收，Claude 仍需可验证的权限边界验收。
+- Paperclip API 短暂停止后已恢复；最终读回为 Agent `terminated`、FIV-32 `blocked`、无 live run、无 active recovery。后续重新测试必须新建一次性 Agent，不复用 terminated Agent。
