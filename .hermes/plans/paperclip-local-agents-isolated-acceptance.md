@@ -170,3 +170,7 @@
 ## 2026-10-19 WSL Linux Paperclip 独立控制面 staging
 
 - 在 `/home/hermes/.local/share/paperclip-linux` 使用独立 Linux Node 24.22.0 和固定 Paperclip 2026.1012.0 安装副本；未使用 `/mnt/c` Windows node_modules...[truncated]
+
+## 2026-10-19 WSL Paperclip runner 控制面验证
+
+- WSL `/home/hermes/.local/share/paperclip-linux` 已有独立 Paperclip 2026.1012.0 staging 安装；`paperclipai doctor --data-dir ...` 12 项检查全通过，Node 24.22.0、embedded PostgreSQL、loopback 配置均可启动。[truncated]
