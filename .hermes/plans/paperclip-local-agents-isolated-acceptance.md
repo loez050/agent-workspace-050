@@ -127,3 +127,12 @@
 - 通过 Paperclip `GET /issues/{id}/comments` 复核：FIV-20 有原始人工审核确认评论，当前仍为 `done`；FIV-19 有 wrapper approval request 和本轮追加的 proof 内容/ SHA-256 审计评论，当前为 `cancelled`。FIV-19/20/24 物理 worktree 和对应 refs 均不存在；FIV-26/28 目录不存在、managed checkout 无对应 branch/worktree；所有目标 Issue 终态、无 activeRun/recovery、workspace 已 archive。
 - 旧 `Antigravity Write Reviewer` 的 status 可通过 PATCH 变成 idle，但 Paperclip 仍保留 `errorReason=Process exited with code 1` 和 runtime-state `lastRunStatus=failed`/`lastError`；错误消退未被验证，不能把该 Agent 报为健康。禁止为刷新状态而复用/重跑旧 blocked `[READ-ONLY]` Issue。
 - 重新做了非写入 Claude CLI readiness：Claude Code `2.1.299`；本地 CC Switch `/health` HTTP 200，`claude auth status --text` 显示 token 类型与 Base URL 为本机网关（不记录任何密钥）；在 no-tool/plan/单轮/no-session 模式下真实请求返回精确 `CLAUDE_CCSWITCH_CURRENT_OK`，exit 0。CLI 额外输出当前 gateway 对 Claude auto-mode classifier billing 的兼容性提示；本次只读 smoke 成功但不验证 Auto Mode 计费能力。
+
+
+## 2026-10-19 最终状态复核和剩余阻塞
+
+- Paperclip 全局 live-runs=`0`；FIV-19/20/24/26/28 五个历史 smoke workspace 都读回 `archived`。FIV-26/28 archived 记录保留 branch cleanup failure 文本，但 Windows 主 checkout、managed checkout、专用临时仓库的 Git worktree/refs 和其原 workspace 路径均查无目标残留。原 proof 文件已在删除前核对内容/hash；FIV-20 的人工批准原评论仍可读，FIV-19 的证明材料在 archive audit comment 中可读。
+- Claude Developer 与 Codex Reviewer 当前 idle；Antigravity Write Reviewer 当前 status idle 但 `errorReason=Process exited with code 1` 和 runtime `lastError` 仍保留，因此不视作已修复/健康；不复用旧 `[READ-ONLY]` blocked Issue。
+- 项目记录已推送 GitHub 私有仓库并让 Paperclip managed checkout fast-forward；正式仓库、managed checkout、`origin/main` 当前 SHA 同为 `37655c60c0bf9335dc9c541807742dec7bb6ca9c`，均干净且 `git diff --check` 通过。
+- 本地 Claude CLI 当前是 `2.1.299`，CC Switch `/health` HTTP 200，认证类型为 `ANTHROPIC_AUTH_TOKEN` 且 Base URL 为 `http://127.0.0.1:15721`。显式无工具 `plan`、单轮、无会话保存的真实请求返回唯一预期 token `CLAUDE_CCSWITCH_CURRENT_OK`，exit 0；stderr 有 gateway 与 Auto Mode classifier billing 兼容性提示，和本次直接 CLI 请求成功是两个独立结果。
+- Windows Sandbox optional-feature 状态因非管理员无法确认；WSL2 user/mount/pid/net unshare 探针通过但 bwrap 缺失，且未建立 Linux Paperclip runner。因此 OS 文件/网络隔离仍未验收，正式 Claude/Codex 写入保持关闭。
