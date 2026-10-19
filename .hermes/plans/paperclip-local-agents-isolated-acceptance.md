@@ -120,3 +120,10 @@
 - 重新读取旧 FIV-19/FIV-20 评论发现：FIV-20 保留有已完成人工审核的原始评论与当前 `done` 状态；FIV-19 只有 wrapper 的审批请求评论，后续 board 表示 proof 已人工核验的评论未在 Paperclip comments API 读回中出现。为避免丢失唯一审计依据，FIV-19 的 proof 文本与 hash 已先写入不可逆的 Paperclip audit comment 后物理删除；FIV-20 原人工批准状态仍保留，另有 proof hash 审计评论。FIV-19/20/24 临时 worktree/branch 现均不存在，FIV-26/28 无目录且主 managed checkout 无对应引用。归档 workspace 返回 200；FIV-26/28 读回 cleanupReason 为找不到仓库根目录，故依靠独立物理目录、分支与 worktree 检查确认没有目标残留，而非把 API 200 当物理清理成功。
 - WSL Ubuntu-22.04 的只读验证确认 WSL2 内核、`/home` 为 ext4、项目 `/mnt/d` 为 DrvFS；当前 `bwrap` 缺失。WSL 一般用户成功执行 `unshare --user --map-root-user --mount --pid --fork true` 与 `unshare --user --map-root-user --net true`，`sudo -n true` 返回成功，说明可进一步做 namespace/bwrap 资格测试；但 Paperclip adapter 的 bwrap 启动尚未验证，WSL Paperclip runtime/CLI/认证链也未建立。此处只证明 Linux 内核的两类 unshare syscall 对该用户可用，不等于 bwrap sandbox或真实 Agent filesystem/network confinement已验收。不得继续引用“unshare未证明”作为当前缺口；仍应明确 `bwrap` 缺失、真实 Adapter run 未验证。
 - 未安装 bwrap、未启动 WSL Paperclip、未改系统策略或权限，也未把 Windows 主 checkout 放到 WSL `/mnt/d` 作为受限 writable workspace。任何 WSL方案应使用 Linux ext4 中的专用 clone/worktree，并先读写探针验证 bwrap实际边界，再启动真实 smoke。
+
+
+## 2026-10-19 审批审计记录补充与当前 CLI 健康复测
+
+- 通过 Paperclip `GET /issues/{id}/comments` 复核：FIV-20 有原始人工审核确认评论，当前仍为 `done`；FIV-19 有 wrapper approval request 和本轮追加的 proof 内容/ SHA-256 审计评论，当前为 `cancelled`。FIV-19/20/24 物理 worktree 和对应 refs 均不存在；FIV-26/28 目录不存在、managed checkout 无对应 branch/worktree；所有目标 Issue 终态、无 activeRun/recovery、workspace 已 archive。
+- 旧 `Antigravity Write Reviewer` 的 status 可通过 PATCH 变成 idle，但 Paperclip 仍保留 `errorReason=Process exited with code 1` 和 runtime-state `lastRunStatus=failed`/`lastError`；错误消退未被验证，不能把该 Agent 报为健康。禁止为刷新状态而复用/重跑旧 blocked `[READ-ONLY]` Issue。
+- 重新做了非写入 Claude CLI readiness：Claude Code `2.1.299`；本地 CC Switch `/health` HTTP 200，`claude auth status --text` 显示 token 类型与 Base URL 为本机网关（不记录任何密钥）；在 no-tool/plan/单轮/no-session 模式下真实请求返回精确 `CLAUDE_CCSWITCH_CURRENT_OK`，exit 0。CLI 额外输出当前 gateway 对 Claude auto-mode classifier billing 的兼容性提示；本次只读 smoke 成功但不验证 Auto Mode 计费能力。
