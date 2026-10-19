@@ -144,3 +144,14 @@
 - 当前保留 Agent 均为 idle：Codex Reviewer、Hermes CEO、Claude Code Developer、Antigravity Read-only Researcher、Antigravity Read-only Disposition Smoke；旧失败的 Antigravity Write Reviewer 已删除，不再复用其残留错误状态。
 - CC Switch `127.0.0.1:15721/health` 当前 HTTP 200；正式仓库与 Paperclip managed checkout 均干净，HEAD、`origin/main` 同为 `ee95d6fa1613de636971d4ec62a6752cce8b5e25`，`git diff --check` 通过。
 - 当前仍不能放行正式 Agent 写入：Windows runner 的 OS 文件/网络隔离未证明，WSL2 缺少 `bwrap`，且没有 Linux Paperclip runner。后续如要继续做 WSL 沙箱，只能在 WSL 原生 ext4 专用 clone 中先验证 `bwrap` 的文件和网络边界，再接入 Paperclip；不得把 `/mnt/d` 或 worktree 本身当成强沙箱。
+
+
+## 2026-10-19 WSL2 原生 ext4 Bubblewrap 探针
+
+- 未改系统级包管理器、未请求 sudo；在 `/home/hermes/.local/share/paperclip-sandbox` 用户目录安装了可回滚的 Bubblewrap 0.6.1 用户副本，下载包 SHA-256 为 `3f4f3f862a9b5ee774571fa1c0ef7c4b21a4f457f3acf5a149ade0345305d032`，入口为 `bin/bwrap`。
+- 同目录安装 Node.js `v24.22.0` 用户副本，压缩包 SHA-256 为 `cc2f601cee82d9a5a233302fe307abc600727035fd7d2c3a3571755989e95008`；不覆盖 WSL 系统 Node `v22.22.2`，仅用于隔离探针。
+- 直接调用 Paperclip 已安装 `adapter-utils/dist/local-process-sandbox.js` 构建真实 bwrap argv，使用 `filesystemScope=workspace`、`networkScope=deny`、`workspaceDir=/home/hermes/.local/share/paperclip-sandbox/probe-adapter-20261019/workspace`。
+- 真实执行结果：`hidden=true`（workspace 外的 secret 不可见）、`BWRAP_ADAPTER_OK` 写入 workspace 成功、网络返回 `blocked-EAI_AGAIN`、退出码 0；探针结束后删除 probe 目录。
+- 第一次直接执行完整生成 argv 暴露出 Paperclip 当前生成的 `/bin` symlink 在这台 WSL bwrap 上失败；为证明底层边界，探针只移除了生成的 `--symlink` 参数后重跑成功。这个结果证明 bwrap/namespace 能力可用，但**不证明 Paperclip 当前完整生成 argv 在 WSL 中已经可直接承载真实 Agent**。需先解决 `/bin` symlink 兼容性，再做真实 Paperclip Linux runner smoke。
+- WSL 现状：Node 22 不满足 Paperclip package 声明的 `>=24.11.0`；已准备 Node 24 用户副本，但 WSL 内尚未启动第二个 Paperclip server，也未迁移 Windows primary database/credentials。
+- 回滚：删除 `/home/hermes/.local/share/paperclip-sandbox` 即移除本轮用户级 bwrap/Node/探针；不影响 Windows Paperclip、正式仓库、GitHub 或系统 apt。
