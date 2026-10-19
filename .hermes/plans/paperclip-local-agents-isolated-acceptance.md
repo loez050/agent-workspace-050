@@ -165,3 +165,8 @@
 - 安全发现：WSL `/home` 内启动命令仍继承 `PWD=/mnt/d/Hermes里/多agent协作`；后续 Linux runner 必须显式 `cd /home/...`，并把 cwd、数据、日志、workspace 与配置都限定在 `/home`，不能只依靠词法路径。
 - WSL 到 Windows `127.0.0.1:15721` 当前探测为 connection refused；WSL 默认网关和 `host.docker.internal` 对该端口也超时。`--unshare-net` 下回调到 Windows CC Switch/Paperclip 更不应假设 localhost 可达。下一步必须先解决 provider/API 的 Linux 可达链路，再启动真实 Linux heartbeat。
 - 现有 Windows Paperclip 保持唯一运行控制面；当前 live-runs=0、非归档 execution workspace=0、issues 仅 `done=12/cancelled=22`，正式仓库和 managed checkout 均干净同步。
+
+
+## 2026-10-19 WSL Linux Paperclip 独立控制面 staging
+
+- 在 `/home/hermes/.local/share/paperclip-linux` 使用独立 Linux Node 24.22.0 和固定 Paperclip 2026.1012.0 安装副本；未使用 `/mnt/c` Windows node_modules...[truncated]
