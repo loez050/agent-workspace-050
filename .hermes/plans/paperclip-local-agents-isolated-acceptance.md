@@ -93,3 +93,14 @@
 
 - Codex 的显式只读参数链通过一次性隔离 smoke；旧 FIV-22 的 `workspace-write` 记录仍不能作为只读证据。
 - 这次结果不放行 Codex 正式项目写入：Windows runtime sandbox、网络隔离、完整权限边界和人工 approval/merge 流程仍未完成业务级验收。
+
+
+## 2026-10-19 真实 Claude 只读/隔离写入验收与历史记录收尾
+
+- Claude 只读 smoke FIV-34 在一次性 Agent + 隔离 worktree 中通过；显式 `--permission-mode plan --permission-prompts none --tools "" --safe-mode --no-session-persistence --strict-mcp-config`，真实 run 返回 `CLAUDE_READ_ONLY_SMOKE_OK`，cwd 为 `C:\pcwt\FIV-34-read-only-claude-explicit-plan-tools-off-argv-smoke`；结束后 Agent terminated、Issue cancelled、worktree/branch 删除、无 run/recovery。该 run 不证明 Windows OS 或网络隔离。
+- Claude 隔离写入 smoke FIV-35 通过：一次性 Agent `Claude Isolated Write Smoke` 实际 argv 有 `--permission-mode acceptEdits --permission-prompts none --tools Read,Edit,Write --strict-mcp-config --disable-slash-commands`，`dangerouslySkipPermissions=false`；`adapter.invoke` 未注入 `--dangerously-skip-permissions`。日志记录 `permissionMode=acceptEdits`、仅 Edit/Read/Write、`mcp_servers=[]`、`CLAUDE_ISOLATED_WRITE_SMOKE_OK`。
+- FIV-35 任务只在 `C:\pcwt\FIV-35-write-smoke-claude-isolated-accept-edits-proof` 新建指定 proof 文件，内容精确为 `CLAUDE_ISOLATED_WRITE_OK`；运行后工作区无 tracked/untracked 改动。Issue 一次性取消、Agent terminated，workspace 归档、分支与 worktree 已删除，精确 PID 已退出。
+- 正式 Claude Developer 与 Codex Reviewer 均 idle；Paperclip live-runs=0。正式仓库和 managed checkout 仍为 `58c31400078e86ec1d084e8b4ac2165229234959`，main 与 origin/main 同步且干净。
+- 本地 Paperclip runner network access 仍 enabled，Windows filesystem/network scopes 仍不可用。验收只证明 Claude CLI 参数链、隔离 worktree 写入和 Job Object 进程回收；不证明 Windows OS sandbox、AppContainer、Hyper-V VM 或网络隔离，不能据此开放正式项目 Agent 写入。
+- 2026-10-19 对旧测试记录 FIV-19、FIV-20、FIV-24、FIV-26、FIV-28 做了带证据的归档：记录各自验证结果/失败状态的审计评论；FIV-19/24/26/28 终态 `cancelled`，FIV-20 保留已通过状态 `done`；五条均无 live run/recovery，Paperclip workspace 已 archive。FIV-19/20 proof 文件原内容与 SHA-256 已先核验并写入 Paperclip 审计评论后才删除；FIV-19/20/24 临时 worktree、主题分支均不存在。FIV-26/28 物理目录本已不存在，归档时 Paperclip 设置了无法解析仓库路径的 cleanupReason；managed checkout 中没有相应分支/worktree。
+- 旧 smoke 收尾的经验：即使归档 API 返回 200，也必须读回 cleanupReason 并独立检查物理 worktree/branch。只在 readiness 允许破坏性关闭后归档；若物理路径已被先行清理，分支 cleanupReason 不能仅靠归档成功推断为已处理。
