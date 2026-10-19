@@ -136,3 +136,11 @@
 - 项目记录已推送 GitHub 私有仓库并让 Paperclip managed checkout fast-forward；正式仓库、managed checkout、`origin/main` 当前 SHA 同为 `37655c60c0bf9335dc9c541807742dec7bb6ca9c`，均干净且 `git diff --check` 通过。
 - 本地 Claude CLI 当前是 `2.1.299`，CC Switch `/health` HTTP 200，认证类型为 `ANTHROPIC_AUTH_TOKEN` 且 Base URL 为 `http://127.0.0.1:15721`。显式无工具 `plan`、单轮、无会话保存的真实请求返回唯一预期 token `CLAUDE_CCSWITCH_CURRENT_OK`，exit 0；stderr 有 gateway 与 Auto Mode classifier billing 兼容性提示，和本次直接 CLI 请求成功是两个独立结果。
 - Windows Sandbox optional-feature 状态因非管理员无法确认；WSL2 user/mount/pid/net unshare 探针通过但 bwrap 缺失，且未建立 Linux Paperclip runner。因此 OS 文件/网络隔离仍未验收，正式 Claude/Codex 写入保持关闭。
+
+## 2026-10-19 当前看板与历史 smoke 收尾复核
+
+- 通过 Paperclip API 先逐项确认无 `activeRun`、无 `activeRecoveryAction`，再把历史一次性阻塞 smoke FIV-11、FIV-25、FIV-27、FIV-31、FIV-32 统一转为 `cancelled`；每条 Issue 都读回状态并确认追加的关闭审计评论存在。没有重跑旧 Issue，没有删除历史 run/comment，也没有触碰正式项目配置。
+- 当前公司 Issue 统计：`done=12`、`cancelled=22`、`blocked=0`、`in_progress=0`、`in_review=0`；公司 `live-runs=0`，非归档 execution workspace 数量为 0。
+- 当前保留 Agent 均为 idle：Codex Reviewer、Hermes CEO、Claude Code Developer、Antigravity Read-only Researcher、Antigravity Read-only Disposition Smoke；旧失败的 Antigravity Write Reviewer 已删除，不再复用其残留错误状态。
+- CC Switch `127.0.0.1:15721/health` 当前 HTTP 200；正式仓库与 Paperclip managed checkout 均干净，HEAD、`origin/main` 同为 `ee95d6fa1613de636971d4ec62a6752cce8b5e25`，`git diff --check` 通过。
+- 当前仍不能放行正式 Agent 写入：Windows runner 的 OS 文件/网络隔离未证明，WSL2 缺少 `bwrap`，且没有 Linux Paperclip runner。后续如要继续做 WSL 沙箱，只能在 WSL 原生 ext4 专用 clone 中先验证 `bwrap` 的文件和网络边界，再接入 Paperclip；不得把 `/mnt/d` 或 worktree 本身当成强沙箱。
