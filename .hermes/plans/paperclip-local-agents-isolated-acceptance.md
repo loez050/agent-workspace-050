@@ -155,3 +155,13 @@
 - 第一次直接执行完整生成 argv 暴露出 Paperclip 当前生成的 `/bin` symlink 在这台 WSL bwrap 上失败；不改 `node_modules`，在 `/home/hermes/.local/share/paperclip-sandbox/bin/bwrap-compat` 放置用户级、权限 `700` 的最小兼容 wrapper，只过滤四组失败的 `--symlink` 参数，其余 argv 原样转给 bwrap。通过 Paperclip builder 将 `filesystemSandboxCommand` 指向该绝对路径后，完整生成 argv 真实执行成功：`hidden=true`、workspace 写入 `BWRAP_COMPAT_OK`、网络 `blocked-EAI_AGAIN`、退出码 0。这个结果证明 Paperclip 当前完整 builder + 用户级兼容层的底层隔离探针可用，但**不等于真实 Paperclip Linux runner 或 Agent heartbeat 已验收**。
 - WSL 现状：Node 22 不满足 Paperclip package 声明的 `>=24.11.0`；已准备 Node 24 用户副本，但 WSL 内尚未启动第二个 Paperclip server，也未迁移 Windows primary database/credentials。
 - 回滚：删除 `/home/hermes/.local/share/paperclip-sandbox` 即移除本轮用户级 bwrap/Node/探针；不影响 Windows Paperclip、正式仓库、GitHub 或系统 apt。
+
+
+## 2026-10-19 WSL Linux Paperclip staging结果
+
+- 使用固定版本 Paperclip `2026.1012.0` 的 Linux npm 包在 `/home/hermes/.local/share/paperclip-linux/npm-global` 安装成功；使用独立 Node `v24.22.0`，没有复用 Windows `node_modules`。
+- `test-drive --data-dir /home/hermes/.local/share/paperclip-linux/test-drive-data-20261019 --no-browser` 已初始化独立 embedded-Postgres 数据目录；doctor 输出 12 项通过，loopback/private、Node 24、数据库、日志和本地存储均可用。
+- 该命令在启动 server 后因没有配置 provider credential 自动退出；没有启动成功后的持久 Linux Paperclip 控制面，也没有创建 Agent、Issue 或 heartbeat。生成的 secrets 仅留在 WSL 专用 test-drive 目录，未复制 Windows 凭据。
+- 安全发现：WSL `/home` 内启动命令仍继承 `PWD=/mnt/d/Hermes里/多agent协作`；后续 Linux runner 必须显式 `cd /home/...`，并把 cwd、数据、日志、workspace 与配置都限定在 `/home`，不能只依靠词法路径。
+- WSL 到 Windows `127.0.0.1:15721` 当前探测为 connection refused；WSL 默认网关和 `host.docker.internal` 对该端口也超时。`--unshare-net` 下回调到 Windows CC Switch/Paperclip 更不应假设 localhost 可达。下一步必须先解决 provider/API 的 Linux 可达链路，再启动真实 Linux heartbeat。
+- 现有 Windows Paperclip 保持唯一运行控制面；当前 live-runs=0、非归档 execution workspace=0、issues 仅 `done=12/cancelled=22`，正式仓库和 managed checkout 均干净同步。
