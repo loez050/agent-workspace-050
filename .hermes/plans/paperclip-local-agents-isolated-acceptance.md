@@ -113,3 +113,10 @@
 - 本机可见 `Ubuntu-22.04` WSL2，内核 `6.6.114.1-microsoft-standard-WSL2`，用户 UID 1000；Paperclip adapter `local-process-sandbox.js` 明确仅 `process.platform === linux` 时可建 sandbox，使用 `bwrap --unshare-pid --unshare-ipc --unshare-uts`，workspace filesystem 用 tmpfs 根目录并显式 ro/rw bind，network scope 用 `--unshare-net`。本机 WSL 当前缺 `bwrap`，尚未证明 WSL 内能成功创建所需 user/mount/network namespaces 或 bwrap；因此不能声称 WSL sandbox 已具备。
 - 项目所在 `/mnt/d` 实际是 DrvFS (`findmnt`: `drvfs;path=D:\`)，不是 WSL 原生 Linux 文件系统。不能把 Windows 主仓库直接经 `/mnt/d` 作为 bwrap writable workspace 来承诺 POSIX ACL/权限隔离；安全候选路径是另建 Linux 原生 ext4/VHDX 内的专用 clone，并用 Paperclip/Linux runner 在该 Linux filesystem 创建 isolated worktree，再逐步验证 bwrap read/write/network deny 子进程和真实 Agent run。此候选路径仍需工具安装、namespace 能力验收与实际端到端测试，目前没有启用或安装任何内容。
 - Windows runner 仍没有 OS 级 filesystem/network sandbox 实证；Windows Sandbox optional feature 查询因当前非管理员无法确认，不能从 `HypervisorPresent=True` 或 `vmcompute` running 推出 Windows Sandbox 已安装。
+
+
+## 2026-10-19 续查：旧审批记录与 WSL sandbox 仍需谨慎
+
+- 重新读取旧 FIV-19/FIV-20 评论发现：FIV-20 保留有已完成人工审核的原始评论与当前 `done` 状态；FIV-19 只有 wrapper 的审批请求评论，后续 board 表示 proof 已人工核验的评论未在 Paperclip comments API 读回中出现。为避免丢失唯一审计依据，FIV-19 的 proof 文本与 hash 已先写入不可逆的 Paperclip audit comment 后物理删除；FIV-20 原人工批准状态仍保留，另有 proof hash 审计评论。FIV-19/20/24 临时 worktree/branch 现均不存在，FIV-26/28 无目录且主 managed checkout 无对应引用。归档 workspace 返回 200；FIV-26/28 读回 cleanupReason 为找不到仓库根目录，故依靠独立物理目录、分支与 worktree 检查确认没有目标残留，而非把 API 200 当物理清理成功。
+- WSL Ubuntu-22.04 的只读验证确认 WSL2 内核、`/home` 为 ext4、项目 `/mnt/d` 为 DrvFS；当前 `bwrap` 缺失。WSL 一般用户成功执行 `unshare --user --map-root-user --mount --pid --fork true` 与 `unshare --user --map-root-user --net true`，`sudo -n true` 返回成功，说明可进一步做 namespace/bwrap 资格测试；但 Paperclip adapter 的 bwrap 启动尚未验证，WSL Paperclip runtime/CLI/认证链也未建立。此处只证明 Linux 内核的两类 unshare syscall 对该用户可用，不等于 bwrap sandbox或真实 Agent filesystem/network confinement已验收。不得继续引用“unshare未证明”作为当前缺口；仍应明确 `bwrap` 缺失、真实 Adapter run 未验证。
+- 未安装 bwrap、未启动 WSL Paperclip、未改系统策略或权限，也未把 Windows 主 checkout 放到 WSL `/mnt/d` 作为受限 writable workspace。任何 WSL方案应使用 Linux ext4 中的专用 clone/worktree，并先读写探针验证 bwrap实际边界，再启动真实 smoke。
