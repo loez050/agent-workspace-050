@@ -104,3 +104,12 @@
 - 本地 Paperclip runner network access 仍 enabled，Windows filesystem/network scopes 仍不可用。验收只证明 Claude CLI 参数链、隔离 worktree 写入和 Job Object 进程回收；不证明 Windows OS sandbox、AppContainer、Hyper-V VM 或网络隔离，不能据此开放正式项目 Agent 写入。
 - 2026-10-19 对旧测试记录 FIV-19、FIV-20、FIV-24、FIV-26、FIV-28 做了带证据的归档：记录各自验证结果/失败状态的审计评论；FIV-19/24/26/28 终态 `cancelled`，FIV-20 保留已通过状态 `done`；五条均无 live run/recovery，Paperclip workspace 已 archive。FIV-19/20 proof 文件原内容与 SHA-256 已先核验并写入 Paperclip 审计评论后才删除；FIV-19/20/24 临时 worktree、主题分支均不存在。FIV-26/28 物理目录本已不存在，归档时 Paperclip 设置了无法解析仓库路径的 cleanupReason；managed checkout 中没有相应分支/worktree。
 - 旧 smoke 收尾的经验：即使归档 API 返回 200，也必须读回 cleanupReason 并独立检查物理 worktree/branch。只在 readiness 允许破坏性关闭后归档；若物理路径已被先行清理，分支 cleanupReason 不能仅靠归档成功推断为已处理。
+
+
+## 2026-10-19 旧 Antigravity 审核 Agent 故障和 Linux sandbox 边界
+
+- `Antigravity Write Reviewer` 一次旧 assignment run `dd15eb9a-3772-45a4-9f11-db587ab20fa6` 的真实根因已从 Paperclip run result/log 证实：任务 `FIV-26` 标题为 `[READ-ONLY] ...`，wrapper 要求 issue 标题以 `[WRITE-APPROVED]` 开头，因此按设计 fail-closed 抛错并 exit 1；不是密码、CLI 缺失或 Windows 文件系统错误。wrapper 的准入行为符合安全约束，不应为让旧只读任务通过而放松。该 issue 仍 blocked；不通过重新运行或直接改成 `[WRITE-APPROVED]` 来掩盖历史失败。
+- Paperclip 的失败 Agent 状态可被 PATCH 为 `idle`，但 GET 读回仍显示旧 `errorReason=Process exited with code 1`，runtime-state 也保留 lastRunStatus=`failed` / lastError；不能通过改 status 假装旧错误消失。后续只应在隔离环境用明确 `[WRITE-APPROVED]` + 人工 approval 的任务验证适当链路，或停用不再使用的测试 Agent；不可直接触碰正式项目。
+- 本机可见 `Ubuntu-22.04` WSL2，内核 `6.6.114.1-microsoft-standard-WSL2`，用户 UID 1000；Paperclip adapter `local-process-sandbox.js` 明确仅 `process.platform === linux` 时可建 sandbox，使用 `bwrap --unshare-pid --unshare-ipc --unshare-uts`，workspace filesystem 用 tmpfs 根目录并显式 ro/rw bind，network scope 用 `--unshare-net`。本机 WSL 当前缺 `bwrap`，尚未证明 WSL 内能成功创建所需 user/mount/network namespaces 或 bwrap；因此不能声称 WSL sandbox 已具备。
+- 项目所在 `/mnt/d` 实际是 DrvFS (`findmnt`: `drvfs;path=D:\`)，不是 WSL 原生 Linux 文件系统。不能把 Windows 主仓库直接经 `/mnt/d` 作为 bwrap writable workspace 来承诺 POSIX ACL/权限隔离；安全候选路径是另建 Linux 原生 ext4/VHDX 内的专用 clone，并用 Paperclip/Linux runner 在该 Linux filesystem 创建 isolated worktree，再逐步验证 bwrap read/write/network deny 子进程和真实 Agent run。此候选路径仍需工具安装、namespace 能力验收与实际端到端测试，目前没有启用或安装任何内容。
+- Windows runner 仍没有 OS 级 filesystem/network sandbox 实证；Windows Sandbox optional feature 查询因当前非管理员无法确认，不能从 `HypervisorPresent=True` 或 `vmcompute` running 推出 Windows Sandbox 已安装。
