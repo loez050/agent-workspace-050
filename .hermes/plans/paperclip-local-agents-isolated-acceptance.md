@@ -152,6 +152,6 @@
 - 同目录安装 Node.js `v24.22.0` 用户副本，压缩包 SHA-256 为 `cc2f601cee82d9a5a233302fe307abc600727035fd7d2c3a3571755989e95008`；不覆盖 WSL 系统 Node `v22.22.2`，仅用于隔离探针。
 - 直接调用 Paperclip 已安装 `adapter-utils/dist/local-process-sandbox.js` 构建真实 bwrap argv，使用 `filesystemScope=workspace`、`networkScope=deny`、`workspaceDir=/home/hermes/.local/share/paperclip-sandbox/probe-adapter-20261019/workspace`。
 - 真实执行结果：`hidden=true`（workspace 外的 secret 不可见）、`BWRAP_ADAPTER_OK` 写入 workspace 成功、网络返回 `blocked-EAI_AGAIN`、退出码 0；探针结束后删除 probe 目录。
-- 第一次直接执行完整生成 argv 暴露出 Paperclip 当前生成的 `/bin` symlink 在这台 WSL bwrap 上失败；为证明底层边界，探针只移除了生成的 `--symlink` 参数后重跑成功。这个结果证明 bwrap/namespace 能力可用，但**不证明 Paperclip 当前完整生成 argv 在 WSL 中已经可直接承载真实 Agent**。需先解决 `/bin` symlink 兼容性，再做真实 Paperclip Linux runner smoke。
+- 第一次直接执行完整生成 argv 暴露出 Paperclip 当前生成的 `/bin` symlink 在这台 WSL bwrap 上失败；不改 `node_modules`，在 `/home/hermes/.local/share/paperclip-sandbox/bin/bwrap-compat` 放置用户级、权限 `700` 的最小兼容 wrapper，只过滤四组失败的 `--symlink` 参数，其余 argv 原样转给 bwrap。通过 Paperclip builder 将 `filesystemSandboxCommand` 指向该绝对路径后，完整生成 argv 真实执行成功：`hidden=true`、workspace 写入 `BWRAP_COMPAT_OK`、网络 `blocked-EAI_AGAIN`、退出码 0。这个结果证明 Paperclip 当前完整 builder + 用户级兼容层的底层隔离探针可用，但**不等于真实 Paperclip Linux runner 或 Agent heartbeat 已验收**。
 - WSL 现状：Node 22 不满足 Paperclip package 声明的 `>=24.11.0`；已准备 Node 24 用户副本，但 WSL 内尚未启动第二个 Paperclip server，也未迁移 Windows primary database/credentials。
 - 回滚：删除 `/home/hermes/.local/share/paperclip-sandbox` 即移除本轮用户级 bwrap/Node/探针；不影响 Windows Paperclip、正式仓库、GitHub 或系统 apt。
