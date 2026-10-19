@@ -174,3 +174,7 @@
 ## 2026-10-19 WSL Paperclip runner 控制面验证
 
 - WSL `/home/hermes/.local/share/paperclip-linux` 已有独立 Paperclip 2026.1012.0 staging 安装；`paperclipai doctor --data-dir ...` 12 项检查全通过，Node 24.22.0、embedded PostgreSQL、loopback 配置均可启动。[truncated]
+
+## 2026-10-19 adapter 只读核对和 Linux runner 接入结论
+
+- Paperclip 官方 `GET /api/llms/agent-configuration/claude_local.txt` 已读回：`engine=cli` 才允许 filesystem/network scope；`filesystemScope="workspace"`、`networkScope="deny"`、`filesystemSandboxCommand` 可作为 claude_local adapterConfig 字段；默认均关闭，ACP 不支持此 confinement。[truncated]
