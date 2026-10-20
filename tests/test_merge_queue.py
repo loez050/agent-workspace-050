@@ -63,6 +63,14 @@ class MergeQueueTests(unittest.TestCase):
         run(["git", "-C", str(self.bare), "fetch", str(self.source), f"{commit}:refs/heads/{name}"], self.source)
         git(self.source, "checkout", "main")
 
+    def test_enqueue_rejects_invalid_branch_without_creating_queue_state(self) -> None:
+        result = self.cmd("enqueue", "not a valid branch", check=False)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("invalid local branch name", result.stdout)
+
+        queue_file = self.bare / "merge-queue-state.json"
+        self.assertFalse(queue_file.exists(), "invalid input must not create or mutate queue state")
+
     def test_drain_success_idempotency_and_clean_integration_clone(self) -> None:
         self.branch("feature-one", "feature.txt", "ok\n")
         expected = git(self.bare, "rev-parse", "feature-one")
