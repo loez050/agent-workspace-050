@@ -1,6 +1,9 @@
 name: agent-auto-approve-merge
 
 on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
   pull_request_target:
     branches: [main]
     types: [opened, synchronize, reopened, ready_for_review]
