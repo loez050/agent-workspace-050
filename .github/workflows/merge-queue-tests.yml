@@ -1,0 +1,30 @@
+name: merge-queue-tests
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: merge-queue-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out candidate without third-party actions
+        env:
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          git init .
+          git remote add origin "https://github.com/${REPO}.git"
+          git fetch --depth=1 origin "${HEAD_SHA}"
+          git checkout --detach FETCH_HEAD
+      - name: Compile
+        run: python3 -m py_compile tools/merge_queue.py tests/test_merge_queue.py
+      - name: Run tests
+        run: python3 -m unittest discover -s tests -v

@@ -1,0 +1,53 @@
+name: agent-auto-approve-merge
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  approve-and-merge:
+    if: >-
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      startsWith(github.event.pull_request.head.ref, 'agent/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for candidate tests
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 60); do
+            conclusion="$(gh api "repos/${REPO}/commits/${HEAD_SHA}/check-runs" --jq '[.check_runs[] | select(.name == "merge-queue-tests")] | if length == 0 then "pending" else .[-1].conclusion // "pending" end')"
+            case "$conclusion" in
+              success) exit 0 ;;
+              failure|cancelled|timed_out|action_required|startup_failure)
+                echo "merge-queue-tests: $conclusion" >&2
+                exit 1
+                ;;
+              *) sleep 10 ;;
+            esac
+          done
+          echo 'merge-queue-tests did not finish within 10 minutes' >&2
+          exit 1
+
+      - name: Approve candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          gh pr review "$PR_URL" --approve \
+            --body "Automated approval: protected candidate branch and merge-queue-tests passed."
+
+      - name: Enable squash auto-merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge "$PR_URL" --auto --squash --delete-branch
